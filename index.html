@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hosting Ops Dashboard — Static</title>
+
+  <!-- Tailwind CDN (no build needed) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { carleton: { navy: "#0D1B2A", gold: "#F2C14E", slate: "#1B263B" } } } } }
+  </script>
+  <!-- PapaParse CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+    h1,h2,.heading-serif { font-family: ui-serif, Georgia, 'Times New Roman', serif; }
+    .tile { border-color: rgb(242 193 78 / .6); background-color: rgb(13 27 42 / .4); }
+    .tile:hover { background-color: rgb(13 27 42 / .6); }
+    .card { border-color: rgba(242,193,78,.5); background-color: rgba(13,27,42,.4); }
+  </style>
+</head>
+<body class="min-h-screen text-white bg-carleton-slate">
+  <main class="mx-auto max-w-6xl p-6 space-y-8">
+    <header class="flex items-center justify-between">
+      <div class="text-2xl font-semibold tracking-tight">Hosting Ops Dashboard</div>
+      <div class="opacity-80">Carleton</div>
+    </header>
+
+    <!-- Metrics -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4" id="metrics"></section>
+
+    <!-- Tiles -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <h2 class="text-lg font-semibold text-carleton-gold">Setup & Infrastructure</h2>
+        <a href="#view-hosts" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Host & Guest Data</div></a>
+        <a href="#view-matching" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Matching Board</div><div class="text-sm opacity-70 mt-1">We’re almost ready — keep going.</div></a>
+        <a href="#view-comms" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Comms & Training Tracker</div></a>
+        <a href="#view-logistics" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Logistics Setup</div></a>
+      </div>
+      <div class="space-y-4">
+        <h2 class="text-lg font-semibold text-carleton-gold">Day-of Ease</h2>
+        <div class="rounded-xl border tile p-3">
+          <input id="global-search" placeholder="Search guest or host" class="w-full bg-transparent outline-none" />
+        </div>
+        <a href="#view-comms" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Live Comms Feed</div></a>
+        <a href="#view-incidents" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Add Incident</div></a>
+        <a href="#view-transport" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Transportation Tracker</div></a>
+        <a href="#view-resources" class="block rounded-xl border tile p-5 transition"><div class="text-lg font-medium">Resource Library</div></a>
+      </div>
+    </section>
+
+    <!-- Views -->
+    <section id="views" class="space-y-10 pt-4">
+      <!-- Hosts/Guests -->
+      <div id="view-hosts">
+        <h2 class="text-xl font-semibold mb-3">Host & Guest Data</h2>
+        <div class="flex items-center gap-3 mb-3">
+          <button id="tab-hosts" class="rounded-lg px-4 py-2 bg-carleton-gold text-black text-sm">Hosts</button>
+          <button id="tab-guests" class="rounded-lg px-4 py-2 border border-carleton-gold text-sm">Guests</button>
+          <div class="ml-auto flex items-center gap-2 text-sm">
+            <select id="f-gender" class="bg-transparent border border-carleton-gold/60 rounded px-2 py-1">
+              <option value="all">Gender: all</option>
+              <option value="female">female</option>
+              <option value="male">male</option>
+              <option value="nonbinary">nonbinary</option>
+            </select>
+            <select id="f-allergy" class="bg-transparent border border-carleton-gold/60 rounded px-2 py-1">
+              <option value="all">Allergy: all</option>
+              <option value="gluten">gluten</option>
+              <option value="peanuts">peanuts</option>
+            </select>
+            <select id="f-access" class="bg-transparent border border-carleton-gold/60 rounded px-2 py-1">
+              <option value="all">Access: all</option>
+              <option value="wheelchair">wheelchair</option>
+              <option value="elevator">elevator</option>
+            </select>
+          </div>
+        </div>
+        <div id="table-hosts" class="overflow-x-auto rounded-lg border border-carleton-gold/40"></div>
+      </div>
+
+      <!-- Matching -->
+      <div id="view-matching">
+        <h2 class="text-xl font-semibold mb-3">Matching Board (Preview)</h2>
+        <div id="matching-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- Incidents -->
+      <div id="view-incidents">
+        <h2 class="text-xl font-semibold mb-3">Incident Log</h2>
+        <form id="incident-form" class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+          <input id="i-time" placeholder="Time (optional)" class="rounded bg-carleton-navy/40 border border-carleton-gold/50 px-2 py-2"/>
+          <input id="i-type" placeholder="Type" class="rounded bg-carleton-navy/40 border border-carleton-gold/50 px-2 py-2"/>
+          <input id="i-person" placeholder="Person" class="rounded bg-carleton-navy/40 border border-carleton-gold/50 px-2 py-2"/>
+          <select id="i-status" class="rounded bg-carleton-navy/40 border border-carleton-gold/50 px-2 py-2"><option>Open</option><option>Closed</option></select>
+          <input id="i-notes" placeholder="Notes" class="rounded bg-carleton-navy/40 border border-carleton-gold/50 px-2 py-2"/>
+          <div class="md:col-span-5 flex gap-3">
+            <button class="inline-flex items-center rounded-lg px-4 py-2 text-sm bg-carleton-gold text-black" type="submit">Add Incident</button>
+            <button id="export-incidents" class="inline-flex items-center rounded-lg px-4 py-2 text-sm border border-carleton-gold" type="button">Export incidents.csv</button>
+          </div>
+        </form>
+        <div id="incidents-table" class="overflow-x-auto rounded-lg border border-carleton-gold/40"></div>
+      </div>
+
+      <!-- Comms -->
+      <div id="view-comms">
+        <h2 class="text-xl font-semibold mb-3">Live Comms Feed</h2>
+        <div id="comms-table" class="overflow-x-auto rounded-lg border border-carleton-gold/40"></div>
+      </div>
+
+      <!-- Transport -->
+      <div id="view-transport">
+        <h2 class="text-xl font-semibold mb-3">Transportation Tracker</h2>
+        <div id="transport-cards" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- Placeholders -->
+      <div id="view-logistics"><h2 class="text-xl font-semibold mb-3">Logistics Setup</h2><div class="opacity-70">Coming soon.</div></div>
+      <div id="view-resources"><h2 class="text-xl font-semibold mb-3">Resource Library</h2><div class="opacity-70">Coming soon.</div></div>
+    </section>
+  </main>
+
+  <script>
+    // CSV loaders
+    async function fetchCsv(path){ const r = await fetch(path); const t = await r.text(); return Papa.parse(t, {header:true}).data; }
+
+    const state = { hosts:[], guests:[], matches:[], incidents:[], comms:[], addedIncidents:[] };
+
+    function metricCard(label, value, alert=false){
+      const border = alert ? 'border-red-500' : 'border-carleton-gold';
+      return `<div class="rounded-lg border ${border} bg-carleton-navy/40 p-4">
+        <div class="text-sm opacity-75">${label}</div>
+        <div class="text-2xl font-semibold">${value}</div>
+      </div>`;
+    }
+    function renderMetrics(){
+      const hostsConfirmed = state.hosts.filter(h => String(h.confirmed).toLowerCase()==='yes').length;
+      const guestsConfirmed = state.guests.filter(g => String(g.confirmed).toLowerCase()==='yes').length;
+      const openIncidents = [...state.addedIncidents, ...state.incidents].filter(i => String(i.status||'').toLowerCase()!=='closed').length;
+      const pct = (part,total)=> Math.round(100*(total?part/total:0));
+      document.getElementById('metrics').innerHTML = [
+        metricCard('Hosts Confirmed', pct(hostsConfirmed, state.hosts.length)+'%'),
+        metricCard('Guests Confirmed', pct(guestsConfirmed, state.guests.length)+'%'),
+        metricCard('Matches Made', String(state.matches.length)),
+        metricCard('Open Incidents', String(openIncidents), openIncidents>0)
+      ].join('');
+    }
+
+    function table(el, rows, columns){
+      const thead = `<thead class="bg-carleton-navy/60"><tr>${
+        columns.map(c=>`<th class="px-3 py-2 text-left">${c}</th>`).join('')
+      }</tr></thead>`;
+      const body = `<tbody>${rows.map((r,i)=>`<tr class="${i%2?'bg-carleton-navy/20':''}">`+
+        columns.map(c=>`<td class="px-3 py-2">${r[c] ?? ''}</td>`).join('')+
+      `</tr>`).join('')}</tbody>`;
+      el.innerHTML = `<table class="min-w-full text-sm">${thead}${body}</table>`;
+    }
+
+    // Hosts/Guests view
+    let currentTab = 'hosts';
+    const filters = { gender:'all', allergy:'all', access:'all', q:'' };
+    function filterRows(){
+      const src = currentTab==='hosts' ? state.hosts : state.guests;
+      return src.filter(r => {
+        const g = String(r.gender_comfort || r.gender || '').toLowerCase();
+        const a = String(r.allergies||'').toLowerCase();
+        const ac = String(r.accessibility||'').toLowerCase();
+        const okG = filters.gender==='all' || g.includes(filters.gender);
+        const okA = filters.allergy==='all' || a.includes(filters.allergy);
+        const okAc = filters.access==='all' || ac.includes(filters.access);
+        const okQ = !filters.q || String(r.name||'').toLowerCase().includes(filters.q);
+        return okG && okA && okAc && okQ;
+      });
+    }
+    function renderHostsGuests(){
+      const el = document.getElementById('table-hosts');
+      const cols = currentTab==='hosts'
+        ? ['id','name','gender_comfort','allergies','accessibility','confirmed','room_building','room_number']
+        : ['id','name','gender','allergies','accessibility','confirmed','arrival_time','departure_time'];
+      table(el, filterRows(), cols);
+    }
+
+    document.getElementById('tab-hosts').onclick = () => {
+      currentTab = 'hosts';
+      document.getElementById('tab-hosts').className = 'rounded-lg px-4 py-2 bg-carleton-gold text-black text-sm';
+      document.getElementById('tab-guests').className = 'rounded-lg px-4 py-2 border border-carleton-gold text-sm';
+      renderHostsGuests();
+    };
+    document.getElementById('tab-guests').onclick = () => {
+      currentTab = 'guests';
+      document.getElementById('tab-guests').className = 'rounded-lg px-4 py-2 bg-carleton-gold text-black text-sm';
+      document.getElementById('tab-hosts').className = 'rounded-lg px-4 py-2 border border-carleton-gold text-sm';
+      renderHostsGuests();
+    };
+    ['f-gender','f-allergy','f-access'].forEach(id => document.getElementById(id).onchange = (e)=>{
+      if(id==='f-gender') filters.gender = e.target.value;
+      if(id==='f-allergy') filters.allergy = e.target.value;
+      if(id==='f-access') filters.access = e.target.value;
+      renderHostsGuests();
+    });
+
+    // Global search
+    document.getElementById('global-search').oninput = (e) => {
+      filters.q = String(e.target.value||'').toLowerCase();
+      renderHostsGuests();
+    };
+
+    // Matching suggestions
+    function compatibleGender(g, h){
+      const pref = String(h.gender_comfort||'').toLowerCase();
+      if (!pref || pref==='any') return true;
+      const gg = String(g.gender||'').toLowerCase();
+      if (pref.includes('female') && gg.startsWith('f')) return true;
+      if (pref.includes('male') && gg.startsWith('m')) return true;
+      if (pref.includes('nonbinary') && gg.startsWith('n')) return true;
+      return false;
+    }
+    function allergiesOk(g,h){
+      const ga = String(g.allergies||'').toLowerCase();
+      const ha = String(h.allergies||'').toLowerCase();
+      if (!ga || !ha) return true;
+      return !ha.split(/[;,\s]+/).some(x => x && ga.includes(x));
+    }
+    function suggestMatches(){
+      const out = [];
+      state.guests.forEach(g => {
+        state.hosts.forEach(h => {
+          let score = 0, reasons=[];
+          if (!compatibleGender(g,h)) return;
+          score+=10; reasons.push('Gender comfort ok');
+          if (allergiesOk(g,h)) { score+=5; reasons.push('Allergies compatible'); }
+          if (String(g.accessibility||'').toLowerCase().includes('wheelchair') && String(h.accessibility||'').toLowerCase().includes('elevator')) { score+=3; reasons.push('Accessibility'); }
+          if (String(g.confirmed||'').toLowerCase()==='yes' && String(h.confirmed||'').toLowerCase()==='yes') { score+=2; reasons.push('Both confirmed'); }
+          if (score>0) out.push({ guest_id:g.id, host_id:h.id, score, reasons });
+        });
+      });
+      out.sort((a,b)=>b.score-a.score);
+      return out.slice(0,50);
+    }
+    function renderMatching(){
+      const list = document.getElementById('matching-list');
+      const suggestions = suggestMatches();
+      list.innerHTML = suggestions.map(s => `
+        <button class="rounded-lg border card p-3 text-left hover:bg-carleton-navy/60" onclick="alert('Confirm ${s.guest_id} → ${s.host_id} (stub). In v1.1 this writes to matches.csv via Netlify Function.')">
+          <div class="font-medium">${s.guest_id} → ${s.host_id}</div>
+          <div class="text-sm opacity-80">Score ${s.score} · ${s.reasons.join(', ')}</div>
+        </button>
+      `).join('');
+    }
+
+    // Incidents
+    function renderIncidents(){
+      const rows = [...state.addedIncidents, ...state.incidents];
+      table(document.getElementById('incidents-table'), rows, ['time','type','person','status','notes']);
+    }
+    document.getElementById('incident-form').onsubmit = (e) => {
+      e.preventDefault();
+      const time = document.getElementById('i-time').value || new Date().toISOString();
+      const row = {
+        time,
+        type: document.getElementById('i-type').value,
+        person: document.getElementById('i-person').value,
+        status: document.getElementById('i-status').value,
+        notes: document.getElementById('i-notes').value
+      };
+      state.addedIncidents = [row, ...state.addedIncidents];
+      ['i-time','i-type','i-person','i-notes'].forEach(id => document.getElementById(id).value='');
+      document.getElementById('i-status').value='Open';
+      renderIncidents(); renderMetrics();
+    };
+    document.getElementById('export-incidents').onclick = () => {
+      const rows = [...state.addedIncidents, ...state.incidents];
+      if (!rows.length) return;
+      const headers = Object.keys(rows[0]);
+      const esc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+      const csv = [headers.join(',')].concat(rows.map(r => headers.map(h => esc(r[h])).join(','))).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'incidents.csv';
+      a.click();
+    };
+
+    // Comms
+    function renderComms(){
+      table(document.getElementById('comms-table'), state.comms, ['date','type','owner','status','notes']);
+    }
+
+    // Transport
+    function transportStatus(iso){
+      const t = Date.parse(iso);
+      const now = Date.now();
+      if (isNaN(t)) return 'Unknown';
+      if (t < now - 3600000) return 'Arrived';
+      if (t < now + 1800000) return 'Landing soon';
+      return 'In transit';
+    }
+    function renderTransport(){
+      const cards = state.guests.map(g => ({
+        name: g.name, arrival_time: g.arrival_time, status: transportStatus(g.arrival_time||'')
+      }));
+      document.getElementById('transport-cards').innerHTML = cards.map(c => `
+        <div class="rounded-lg border card p-4">
+          <div class="text-lg font-medium">${c.name}</div>
+          <div class="text-sm opacity-80">${c.arrival_time || '—'}</div>
+          <div class="mt-1">${c.status}</div>
+        </div>
+      `).join('');
+    }
+
+    async function init(){
+      const [hosts, guests, matches, incidents, comms] = await Promise.all([
+        fetchCsv('data/hosts.csv'),
+        fetchCsv('data/guests.csv'),
+        fetchCsv('data/matches.csv'),
+        fetchCsv('data/incidents.csv'),
+        fetchCsv('data/comms.csv'),
+      ]);
+      state.hosts=hosts; state.guests=guests; state.matches=matches; state.incidents=incidents; state.comms=comms;
+      renderMetrics(); renderHostsGuests(); renderMatching(); renderIncidents(); renderComms(); renderTransport();
+    }
+    init();
+  </script>
+</body>
+</html>
