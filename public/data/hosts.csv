@@ -1,0 +1,4 @@
+id,name,gender_comfort,allergies,accessibility,confirmed,room_building,room_number
+H1,Sarah Martinez,female_only,peanuts,None,Yes,Myers,202
+H2,David Lee,any,None,Near elevator,No,Watson,314
+H3,Alex Taylor,nonbinary_only,gluten,Elevator nearby,Yes,Goodhue,118
